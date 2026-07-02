@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>VDI Pages – Findings Tracker (Live)</title>
+<style>
+  :root{
+    --ink:#1b2430;
+    --ink-soft:#5a6472;
+    --line:#dde1e6;
+    --paper:#fbfbfa;
+    --card:#ffffff;
+    --navy:#16233b;
+    --violet:#6c5ce7;
+    --violet-soft:#efedfd;
+    --amber:#b9770e;
+    --amber-soft:#fbf1de;
+    --green:#1e7a4c;
+    --green-soft:#e7f5ee;
+  }
+  *{box-sizing:border-box;}
+  body{
+    font-family:"Segoe UI", system-ui, -apple-system, sans-serif;
+    background:var(--paper);
+    color:var(--ink);
+    margin:0;
+    line-height:1.55;
+  }
+  .wrap{ max-width:980px; margin:0 auto; padding:2.5rem 1.5rem 5rem; }
+  header.top{ border-bottom:1px solid var(--line); padding-bottom:1.5rem; margin-bottom:1rem; }
+  .eyebrow{ text-transform:uppercase; letter-spacing:0.08em; font-size:0.72rem; font-weight:700; color:var(--violet); }
+  h1{ font-size:1.7rem; margin:0.3rem 0 0.5rem; color:var(--navy); letter-spacing:-0.01em; }
+  .lede{ color:var(--ink-soft); max-width:70ch; font-size:0.98rem; }
+
+  .sync-banner{
+    display:flex;
+    align-items:center;
+    gap:0.6rem;
+    font-size:0.82rem;
+    padding:0.55rem 0.9rem;
+    border-radius:8px;
+    margin:1rem 0 1.5rem;
+  }
+  .sync-banner.live{ background:var(--green-soft); color:var(--green); }
+  .sync-banner.offline{ background:var(--amber-soft); color:var(--amber); }
+  .sync-dot{ width:8px; height:8px; border-radius:50%; background:currentColor; flex-shrink:0; }
+  .sync-banner button{
+    margin-left:auto;
+    border:1px solid currentColor;
+    background:transparent;
+    color:inherit;
+    padding:0.2rem 0.6rem;
+    border-radius:999px;
+    font-size:0.75rem;
+    cursor:pointer;
+  }
+
+  .dash{ display:grid; grid-template-columns:repeat(4, 1fr); gap:0.75rem; margin:0 0 2.25rem; }
+  .dash .cell{ background:var(--card); border:1px solid var(--line); border-radius:10px; padding:0.9rem 1rem; }
+  .dash .cell .num{ font-size:1.5rem; font-weight:700; color:var(--navy); }
+  .dash .cell .lab{ font-size:0.78rem; color:var(--ink-soft); }
+  .dash .cell.total .num{ color:var(--violet); }
+  .dash .cell.done .num{ color:var(--green); }
+  .bar-track{ height:6px; border-radius:4px; background:var(--line); overflow:hidden; margin-top:0.5rem; }
+  .bar-fill{ height:100%; background:var(--green); width:0%; transition:width 0.25s ease; }
+
+  .filters{ display:flex; gap:0.5rem; margin-bottom:1.5rem; }
+  .filters button{ border:1px solid var(--line); background:var(--card); color:var(--ink-soft); padding:0.4rem 0.85rem; border-radius:999px; font-size:0.82rem; cursor:pointer; }
+  .filters button.active{ background:var(--navy); border-color:var(--navy); color:#fff; }
+
+  section.page-block{ margin-bottom:2.75rem; }
+  .page-head{ display:flex; align-items:baseline; justify-content:space-between; gap:1rem; border-bottom:2px solid var(--navy); padding-bottom:0.5rem; margin-bottom:1rem; }
+  .page-head h2{ font-size:1.15rem; margin:0; color:var(--navy); }
+  .page-progress{ font-size:0.8rem; color:var(--ink-soft); white-space:nowrap; }
+
+  h3.subhead{ font-size:0.78rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--ink-soft); margin:1.4rem 0 0.6rem; }
+  ul.plain{ margin:0 0 0.5rem 1.1rem; padding:0; }
+  ul.plain li{ margin-bottom:0.45rem; font-size:0.94rem; }
+
+  .item{
+    display:flex; align-items:flex-start; gap:0.65rem;
+    background:var(--card); border:1px solid var(--line); border-left:3px solid var(--amber);
+    border-radius:8px; padding:0.65rem 0.8rem; margin-bottom:0.5rem; font-size:0.94rem;
+    transition:opacity 0.15s ease, border-color 0.15s ease;
+  }
+  .item.fixed{ border-left-color:var(--green); opacity:0.65; }
+  .item.fixed .item-text{ text-decoration:line-through; text-decoration-color:var(--ink-soft); }
+  .item.hidden{ display:none; }
+  .item input[type=checkbox]{ margin-top:0.2rem; width:16px; height:16px; accent-color:var(--green); cursor:pointer; flex-shrink:0; }
+  .item input[type=checkbox]:disabled{ cursor:wait; opacity:0.5; }
+  .item-text{ flex:1; }
+  .status-tag{ font-size:0.68rem; text-transform:uppercase; letter-spacing:0.04em; font-weight:700; padding:0.15rem 0.5rem; border-radius:999px; background:var(--amber-soft); color:var(--amber); white-space:nowrap; }
+  .item.fixed .status-tag{ background:var(--green-soft); color:var(--green); }
+
+  .improve-block{ background:var(--violet-soft); border-radius:8px; padding:0.15rem 0.9rem; }
+  .improve-block .item{ background:transparent; border:none; border-left:none; border-bottom:1px solid rgba(108,92,231,0.18); border-radius:0; }
+  .improve-block .item:last-child{ border-bottom:none; }
+  .improve-block .item .status-tag{ background:#fff; }
+
+  table{ border-collapse:collapse; width:100%; margin:1rem 0; font-size:0.9rem; }
+  th, td{ border:1px solid var(--line); padding:0.6rem 0.7rem; text-align:left; vertical-align:top; }
+  th{ background:var(--navy); color:#fff; font-weight:600; font-size:0.85rem; }
+  tr:nth-child(even) td{ background:#f7f7f6; }
+
+  footer.notes{ margin-top:2.5rem; padding-top:1rem; border-top:1px solid var(--line); font-size:0.8rem; color:var(--ink-soft); }
+
+  @media (max-width:640px){ .dash{ grid-template-columns:repeat(2,1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="top">
+    <div class="eyebrow">Securin · VDI Pre-Launch Audit</div>
+    <h1>VDI Pages — Findings Tracker</h1>
+    <p class="lede">
+      Across the three VDI pages, the overall structure is strong: a parent narrative page, a vulnerabilities list page,
+      and a CVE detail page work together to tell the story of a large, enriched vulnerability and threat intelligence corpus.
+      The main gaps are in clarity and trust — the relationship between global VDI data and Securin-generated research isn't
+      explicit, some metrics look inconsistent, and methodology for key concepts is missing or under-explained.
+    </p>
+  </header>
+
+  <div class="sync-banner" id="syncBanner">
+    <span class="sync-dot"></span>
+    <span id="syncText">Checking sync status…</span>
+    <button id="refreshBtn">Refresh</button>
+  </div>
+
+  <div class="dash">
+    <div class="cell total"><div class="num" id="statTotal">0</div><div class="lab">Total items</div></div>
+    <div class="cell done"><div class="num" id="statDone">0</div><div class="lab">Resolved</div></div>
+    <div class="cell"><div class="num" id="statOpen">0</div><div class="lab">Open</div></div>
+    <div class="cell"><div class="lab">Overall progress</div><div class="bar-track"><div class="bar-fill" id="barFill"></div></div></div>
+  </div>
+
+  <div class="filters">
+    <button data-filter="all" class="active">All items</button>
+    <button data-filter="open">Open only</button>
+    <button data-filter="fixed">Resolved only</button>
+  </div>
+
+  <!-- PAGE 1 -->
+  <section class="page-block" data-page="p1">
+    <div class="page-head"><h2>1. Parent VDI Page (Narrative, Stats, Sections)</h2><span class="page-progress" data-page-progress="p1"></span></div>
+
+    <h3 class="subhead">Strengths</h3>
+    <ul class="plain">
+      <li>Clear high-level narrative: positions VDI as a real-time vulnerability and threat intelligence database with KEVs, zero-days, exploits, attack chains, and an internal research program.</li>
+      <li>Compelling stats and counters that convey scale and depth, including total vulnerabilities, CVEs with exploits, trending CVEs, zero-days, and KEV coverage.</li>
+      <li>Strong sections showcasing Securin Research, zero-day advisories, KEVs, recently discovered vulnerabilities, and KEV Toxic Combo attack chains.</li>
+      <li>Clear commercial CTAs at the bottom: subscribe to Securin threat intelligence and request a demo.</li>
+    </ul>
+
+    <h3 class="subhead">Key Issues</h3>
+    <div class="item" data-id="p1-i1"><input type="checkbox" /><span class="item-text">Conflicting zero-day metrics: 2,159 zero-days in one counter, 18 discovered in a research highlight, and 418 discovered plus 202 upcoming advisories elsewhere, with no explanation of how these numbers relate.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p1-i2"><input type="checkbox" /><span class="item-text">Blurred lines between global VDI data and Securin-specific research — the page sometimes reads as though everything shown was discovered by Securin, and sometimes as global corpus data.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p1-i3"><input type="checkbox" /><span class="item-text">KEV description ("Top CVEs with the highest adversary attention right now") doesn't explain underlying data sources (CISA KEV, dark web, exploit kits, telemetry, incident data).</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p1-i4"><input type="checkbox" /><span class="item-text">Labels such as KEV, EXPLOIT, RANSOMWARE, TRENDING, ZERO DAY are not defined anywhere on the page, weakening perceived rigor for security practitioners.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p1-i5"><input type="checkbox" /><span class="item-text">Toxic Combo attack chains are strong differentiators but currently presented as isolated narratives rather than branded analytic constructs built on VDI and Securin research.</span><span class="status-tag">Open</span></div>
+
+    <h3 class="subhead">Suggested Improvements</h3>
+    <div class="improve-block">
+      <div class="item" data-id="p1-s1"><input type="checkbox" /><span class="item-text">Explicitly define VDI in the hero/stats area as the global superset: a vulnerability and threat data lake aggregating public CVE feeds, vendor advisories, community research, and Securin's own discoveries into one normalized corpus.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p1-s2"><input type="checkbox" /><span class="item-text">Disentangle zero-day metrics with clear labels, e.g. "2,159 zero-days tracked in VDI (global)," "418 lifetime zero-day findings disclosed by Securin Research," "18 active zero-day cases under coordinated disclosure."</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p1-s3"><input type="checkbox" /><span class="item-text">Make it explicit in each section whether content is global VDI data or a Securin subset.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p1-s4"><input type="checkbox" /><span class="item-text">Add short methodology snippets: define KEV, EXPLOIT, RANSOMWARE, TRENDING, ZERO DAY tags and outline inputs for the Securin Risk Index.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p1-s5"><input type="checkbox" /><span class="item-text">Strengthen "Unlock Deeper Threat Intelligence" with practitioner-focused bullets.</span><span class="status-tag">Open</span></div>
+    </div>
+  </section>
+
+  <!-- PAGE 2 -->
+  <section class="page-block" data-page="p2">
+    <div class="page-head"><h2>2. Vulnerabilities List Page (Child / Browse View)</h2><span class="page-progress" data-page-progress="p2"></span></div>
+
+    <h3 class="subhead">Strengths</h3>
+    <ul class="plain">
+      <li>Successfully conveys breadth: "472,030 vulnerabilities found" immediately communicates that VDI is a large, serious corpus.</li>
+      <li>Filters such as Securin KEVs, Recently Published, Exploits, Trending, CISA KEVs, Zero Days, and Ransomware align well with how vulnerability engineers think about triage and hunting.</li>
+      <li>Clearly pulls from the VDI database and shows concrete CVEs with titles, affected vendors, publication dates, and CVSS scores.</li>
+      <li>Footer CTA reiterates that deeper threat intelligence and the full corpus are available via subscription and demo.</li>
+    </ul>
+
+    <h3 class="subhead">Key Issues</h3>
+    <div class="item" data-id="p2-i1"><input type="checkbox" /><span class="item-text">Visually and textually, the page still resembles a generic CVE browser; doesn't immediately communicate how VDI is richer than public NVD or vendor advisory portals.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p2-i2"><input type="checkbox" /><span class="item-text">"472,030 vulnerabilities" is stated with no explanation of what makes this corpus special.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p2-i3"><input type="checkbox" /><span class="item-text">Filter meanings aren't explained — a first-time visitor doesn't know how "Securin KEVs" differ from "CISA KEVs," or what data drives "Trending" and "Ransomware."</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p2-i4"><input type="checkbox" /><span class="item-text">Pagination makes clear only a subset of CVEs is shown, but this isn't framed as a deliberate "sample view" for a commercial product.</span><span class="status-tag">Open</span></div>
+
+    <h3 class="subhead">Suggested Improvements</h3>
+    <div class="improve-block">
+      <div class="item" data-id="p2-s1"><input type="checkbox" /><span class="item-text">Add a short positioning line near the header explaining this is a live sample of the VDI corpus.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p2-s2"><input type="checkbox" /><span class="item-text">Explain filter categories in one sentence each so practitioners understand they're intelligence lenses, not just flags.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p2-s3"><input type="checkbox" /><span class="item-text">State explicitly that this view is a limited slice of VDI, and that subscribers get full corpus access, historical data, attack chains, Risk Index, and export/API options.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p2-s4"><input type="checkbox" /><span class="item-text">For records with intelligence attributes, visually surface tags such as Exploit, KEV, or Ransomware in the cards.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p2-s5"><input type="checkbox" /><span class="item-text">Align CTA copy with practitioner workflows: feeding VDI into VM/detection stacks and exploit-aware prioritization.</span><span class="status-tag">Open</span></div>
+    </div>
+  </section>
+
+  <!-- PAGE 3 -->
+  <section class="page-block" data-page="p3">
+    <div class="page-head"><h2>3. CVE Detail Page (Per-record Depth)</h2><span class="page-progress" data-page-progress="p3"></span></div>
+
+    <h3 class="subhead">Strengths</h3>
+    <ul class="plain">
+      <li>Clean, practitioner-grade report layout: summary, CVSS, vendor, dates, exposure timeline, exploitability overview, weaknesses, threats, threat actors, MITRE mappings, discussions, references.</li>
+      <li>Exposure timeline, including "Securin Updated" and "CVE Published," shows independent tracking beyond the public CVE publication date.</li>
+      <li>Exploitability Score and Impact Score hint at a proprietary scoring model layered on top of CVSS.</li>
+      <li>Threats, Threat Actors, and MITRE mapping sections remain visible even when empty, signaling these dimensions are tracked and populated where data exists.</li>
+      <li>References linking to vendor documentation (e.g. Quest release notes) provide expected anchors for validation.</li>
+    </ul>
+
+    <h3 class="subhead">Key Issues</h3>
+    <div class="item" data-id="p3-i1"><input type="checkbox" /><span class="item-text">The page doesn't explicitly say it's a VDI record enriched beyond public CVE data — enrichment is implied but not stated.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p3-i2"><input type="checkbox" /><span class="item-text">Empty fields are presented simply as "No known exploits…" or "No threat actors…", which can read as missing data rather than active monitoring.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p3-i3"><input type="checkbox" /><span class="item-text">The relationship between CVSS and Securin Risk Score isn't explained, even though they may diverge for higher-signal CVEs.</span><span class="status-tag">Open</span></div>
+    <div class="item" data-id="p3-i4"><input type="checkbox" /><span class="item-text">Commercial tie-back to the broader VDI product is minimal — the page functions mainly as an isolated report view.</span><span class="status-tag">Open</span></div>
+
+    <h3 class="subhead">Suggested Improvements</h3>
+    <div class="improve-block">
+      <div class="item" data-id="p3-s1"><input type="checkbox" /><span class="item-text">Add an explicit statement near the top that this is a VDI record combining public CVE information with Securin enrichment.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p3-s2"><input type="checkbox" /><span class="item-text">Rephrase empty-field messages to emphasize ongoing monitoring.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p3-s3"><input type="checkbox" /><span class="item-text">Include a short explanation of how and why Securin Risk Score can diverge from CVSS.</span><span class="status-tag">Open</span></div>
+      <div class="item" data-id="p3-s4"><input type="checkbox" /><span class="item-text">Add a bottom strip tying this record back to the full VDI product, with links to "view more CVEs" and "request a VDI demo."</span><span class="status-tag">Open</span></div>
+    </div>
+  </section>
+
+  <!-- CROSS-PAGE SUMMARY -->
+  <section>
+    <h3 class="subhead" style="margin-top:0;">Cross-page Summary</h3>
+    <table>
+      <thead><tr><th>Page</th><th>Main Strengths</th><th>Main Improvement Themes</th></tr></thead>
+      <tbody>
+        <tr><td>Parent VDI page</td><td>Strong narrative, convincing stats, clear research and attack-chain storytelling, solid CTAs.</td><td>Clarify metrics, separate global VDI data from Securin research output, add methodology for KEVs, labels, and scoring.</td></tr>
+        <tr><td>Vulnerabilities list page</td><td>Good breadth signal, practitioner-friendly filters, direct connection to the VDI corpus.</td><td>Make VDI's product value explicit, explain filter semantics, highlight enrichment, mark the view as a sample.</td></tr>
+        <tr><td>CVE detail page</td><td>Clean report design, visible enrichment dimensions, independent timelines, vendor references.</td><td>Brand the record as an enriched VDI artifact, reframe empty fields as active monitoring, explain risk scoring, tie back to subscription/demo.</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <footer class="notes" id="footerNote">
+    Status updates here are shared with anyone who opens this artifact — not private to your browser.
+  </footer>
+
+</div>
+
+<script>
+(function(){
+  // ---- Supabase config: this project's URL + public anon key ----
+  const SUPABASE_URL = 'https://sfjvoatmjjowbvlrumaa.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_0u8VKL9EhZ_rdOy784qTlg_mMpz8IFE';
+  const TABLE = 'VDI-Findings';
+  const REST_URL = `${SUPABASE_URL}/rest/v1/${TABLE}`;
+  const BASE_HEADERS = {
+    'apikey': SUPABASE_ANON_KEY,
+    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+    'Content-Type': 'application/json'
+  };
+
+  const items = Array.from(document.querySelectorAll('.item'));
+  const banner = document.getElementById('syncBanner');
+  const syncText = document.getElementById('syncText');
+  const refreshBtn = document.getElementById('refreshBtn');
+  const footerNote = document.getElementById('footerNote');
+
+  const storageAvailable = true; // Supabase works from any browser, artifact or downloaded file alike
+  let state = {};
+
+  function setBanner(mode, text){
+    banner.classList.remove('live','offline');
+    banner.classList.add(mode === 'live' ? 'live' : 'offline');
+    syncText.textContent = text;
+  }
+
+  async function loadState(){
+    try{
+      const res = await fetch(`${REST_URL}?select=item_id,status`, { headers: BASE_HEADERS });
+      if(!res.ok) throw new Error(`HTTP ${res.status}`);
+      const rows = await res.json();
+      const out = {};
+      rows.forEach(r => { out[r.item_id] = (r.status === 'Resolved'); });
+      return out;
+    }catch(e){
+      console.error('Load from Supabase failed', e);
+      return null; // null = couldn't reach the DB, distinct from "empty"
+    }
+  }
+
+  async function saveState(id, checked){
+    try{
+      const res = await fetch(`${REST_URL}?on_conflict=item_id`, {
+        method: 'POST',
+        headers: { ...BASE_HEADERS, 'Prefer': 'resolution=merge-duplicates,return=minimal' },
+        body: JSON.stringify([{ item_id: id, status: checked ? 'Resolved' : 'Open', updated_at: new Date().toISOString() }])
+      });
+      return res.ok;
+    }catch(e){
+      console.error('Save to Supabase failed', e);
+      return false;
+    }
+  }
+
+  function applyItem(item){
+    const id = item.dataset.id;
+    const checked = !!state[id];
+    const checkbox = item.querySelector('input[type=checkbox]');
+    const tag = item.querySelector('.status-tag');
+    checkbox.checked = checked;
+    item.classList.toggle('fixed', checked);
+    tag.textContent = checked ? 'Resolved' : 'Open';
+  }
+
+  function updateDashboard(){
+    const total = items.length;
+    const done = items.filter(i => state[i.dataset.id]).length;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statDone').textContent = done;
+    document.getElementById('statOpen').textContent = total - done;
+    document.getElementById('barFill').style.width = total ? Math.round((done/total)*100) + '%' : '0%';
+
+    ['p1','p2','p3'].forEach(page => {
+      const pageItems = items.filter(i => i.closest('.page-block').dataset.page === page);
+      const pageDone = pageItems.filter(i => state[i.dataset.id]).length;
+      const el = document.querySelector(`[data-page-progress="${page}"]`);
+      if(el) el.textContent = `${pageDone} / ${pageItems.length} resolved`;
+    });
+  }
+
+  async function refreshFromStorage(){
+    setBanner('live', 'Syncing…');
+    const loaded = await loadState();
+    if(loaded === null){
+      setBanner('offline', 'Could not reach the database — showing last known status.');
+      return;
+    }
+    state = loaded;
+    renderAll();
+    const now = new Date();
+    setBanner('live', `Live shared status — synced with Supabase. Last synced ${now.toLocaleTimeString()}`);
+  }
+
+  items.forEach(item => {
+    const checkbox = item.querySelector('input[type=checkbox]');
+    checkbox.addEventListener('change', async () => {
+      const id = item.dataset.id;
+      checkbox.disabled = true;
+      state[id] = checkbox.checked;
+      applyItem(item);
+      updateDashboard();
+      applyFilter();
+      const ok = await saveState(id, checkbox.checked);
+      checkbox.disabled = false;
+      if(!ok){
+        setBanner('offline', 'Could not save to the database — this change may not be visible to others. Try again.');
+      }else{
+        setBanner('live', `Live shared status — synced ${new Date().toLocaleTimeString()}`);
+      }
+    });
+  });
+
+  document.querySelectorAll('.filters button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.filters button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentFilter = btn.dataset.filter;
+      applyFilter();
+    });
+  });
+
+  refreshBtn.addEventListener('click', refreshFromStorage);
+
+  (async function init(){
+    footerNote.textContent = 'Status here is stored in a shared database — anyone with this file or link sees the same, live status, whether opened in Claude or as a plain downloaded file.';
+    renderAll();
+    await refreshFromStorage();
+    // Light polling so open tabs/copies pick up others' changes without a manual refresh.
+    setInterval(refreshFromStorage, 15000);
+  })();
+})();
+</script>
+
+</body>
+</html>
